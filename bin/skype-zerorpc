@@ -1,0 +1,155 @@
+#!/usr/bin/python
+#
+# Skype API
+#
+# Copyright (c) 2013 Vyacheslav Slinko
+# Licensed under the MIT License
+#
+
+
+import sys
+import time
+import Skype4Py
+import zerorpc
+import gevent
+
+
+def user_handle_mapper(user):
+    return user.Handle
+
+
+def user_mapper(user):
+    return {
+        'about': user.About,
+        'aliases': user.Aliases,
+        'birthday': time.mktime(user.Birthday.timetuple()) if user.Birthday else None,
+        'buddyStatus': user.BuddyStatus,
+        'canLeaveVoicemail': user.CanLeaveVoicemail,
+        'city': user.City,
+        'country': user.Country,
+        'countryCode': user.CountryCode,
+        'displayName': user.DisplayName,
+        'fullName': user.FullName,
+        'handle': user.Handle,
+        'hasCallEquipment': user.HasCallEquipment,
+        'homepage': user.Homepage,
+        'isAuthorized': user.IsAuthorized,
+        'isBlocked': user.IsBlocked,
+        'isCallForwardActive': user.IsCallForwardActive,
+        'isSkypeOutContact': user.IsSkypeOutContact,
+        'isVideoCapable': user.IsVideoCapable,
+        'isVoicemailCapable': user.IsVoicemailCapable,
+        'language': user.Language,
+        'languageCode': user.LanguageCode,
+        'lastOnline': user.LastOnline,
+        'moodText': user.MoodText,
+        'numberOfAuthBuddies': user.NumberOfAuthBuddies,
+        'onlineStatus': user.OnlineStatus,
+        'phoneHome': user.PhoneHome,
+        'phoneMobile': user.PhoneMobile,
+        'phoneOffice': user.PhoneOffice,
+        'province': user.Province,
+        'receivedAuthRequest': user.ReceivedAuthRequest,
+        'richMoodText': user.RichMoodText,
+        'sex': user.Sex,
+        'speedDial': user.SpeedDial,
+        'timezone': user.Timezone
+    }
+
+
+def short_chat_mapper(chat):
+    return {
+        'friendlyName': chat.FriendlyName,
+        'name': chat.Name,
+        'topic': chat.Topic
+    }
+
+
+def chat_mapper(chat):
+    return {
+        'activeMembers': map(user_handle_mapper, chat.ActiveMembers),
+        'activityTimestamp': chat.ActivityTimestamp,
+        'adder': user_handle_mapper(chat.Adder),
+        'applicants': map(user_handle_mapper, chat.Applicants),
+        'blob': chat.Blob,
+        'bookmarked': chat.Bookmarked,
+        'description': chat.Description,
+        'dialogPartner': chat.DialogPartner,
+        'friendlyName': chat.FriendlyName,
+        'guideLines': chat.GuideLines,
+        'members': map(user_handle_mapper, chat.Members),
+        'myRole': chat.MyRole,
+        'myStatus': chat.MyStatus,
+        'name': chat.Name,
+        'passwordHint': chat.PasswordHint,
+        'posters': map(user_handle_mapper, chat.Posters),
+        'status': chat.Status,
+        'timestamp': chat.Timestamp,
+        'topic': chat.Topic,
+        'type': chat.Type
+    }
+
+
+def short_message_mapper(message):
+    return {
+        'id': message.Id,
+        'body': message.Body,
+        'fromHandle': message.FromHandle,
+        'chatName': message.ChatName
+    }
+
+
+class SkypeRPC(object):
+    def __init__(self, skype):
+        self.skype = skype
+        self.skype.OnMessageStatus = self.on_message
+        self.message_subscribers = set()
+
+    def on_message(self, message, status):
+        if status == Skype4Py.cmsReceived:
+            for queue in self.message_subscribers:
+                queue.put({
+                    'user': message.Sender.Handle,
+                    'message': message.Body,
+                    'room': message.Chat.Name
+                })
+
+    @zerorpc.stream
+    def streaming_messages(self):
+        try:
+            queue = gevent.queue.Queue()
+            self.message_subscribers.add(queue)
+            for message in queue:
+                yield message
+        finally:
+            self.message_subscribers.remove(queue)
+
+    def chats(self):
+        return map(short_chat_mapper, self.skype.Chats)
+
+    def chat(self, chat_name):
+        return chat_mapper(self.skype.Chat(chat_name))
+
+    def user(self, user_name):
+        return user_mapper(self.skype.User(user_name))
+
+    def send_message(self, chat_name, message_text):
+        chat = self.skype.Chat(chat_name)
+        return short_message_mapper(chat.SendMessage(message_text))
+
+
+def main():
+    if sys.platform.startswith('linux'):
+        skype = Skype4Py.Skype(Transport=os.environ.get('SKYPE_API_TRANSPORT', 'x11'))
+    else:
+        skype = Skype4Py.Skype()
+
+    skype.Attach()
+
+    rpc_server = zerorpc.Server(SkypeRPC(skype))
+    rpc_server.bind('tcp://127.0.0.1:4243')
+    rpc_server.run()
+
+
+if __name__ == '__main__':
+    main()

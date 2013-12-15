@@ -1,0 +1,28 @@
+{
+    "name": "skype-api",
+    "version": "0.1.0",
+    "description": "Skype API",
+    "keywords": ["skype"],
+    "homepage": "https://github.com/vslinko/skype-api",
+    "bugs": {
+        "url": "https://github.com/vslinko/skype-api/issues",
+        "email": "vyacheslav.slinko@gmail.com"
+    },
+    "license": "MIT",
+    "author": {
+        "name": "Vyacheslav Slinko",
+        "email": "vyacheslav.slinko@gmail.com"
+    },
+    "main": "lib/skype-api",
+    "bin": {
+        "skype-zerorpc": "bin/skype-zerorpc",
+        "skype-cli": "bin/skype-cli"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/vslinko/skype-api.git"
+    },
+    "dependencies": {
+        "zerorpc": "~0.9"
+    }
+}

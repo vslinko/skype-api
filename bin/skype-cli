@@ -1,0 +1,78 @@
+#!/usr/bin/env node
+/**
+ * Skype API
+ *
+ * Copyright (c) 2013 Vyacheslav Slinko
+ * Licensed under the MIT License
+ */
+
+
+var skypeAPI = require('..');
+var util = require('util');
+var repl = require('repl');
+
+
+var messages = [];
+var skype = skypeAPI();
+
+var mapping = {
+    'help': function(args, callback) {
+        callback(null, [
+            'messages',
+            'chats',
+            'chat CHAT_NAME',
+            'user USER_NAME',
+            'send_message CHAT_NAME MESSAGE'
+        ]);
+    },
+    'messages': function(args, callback) {
+        callback(null, messages);
+        messages = [];
+    },
+    'chats': function(args, callback) {
+        skype.getChats(callback);
+    },
+    'chat': function(args, callback) {
+        skype.getChat(args[0], callback);
+    },
+    'user': function(args, callback) {
+        skype.getUser(args[0], callback);
+    },
+    'send_message': function(args, callback) {
+        var chatName = args.shift();
+        skype.sendMessage(chatName, args.join(' '), callback);
+    }
+};
+
+skype.on('message', function(message) {
+    messages.push(message);
+});
+
+skype.on('error', function(err) {
+    console.error(err);
+    process.exit(1);
+});
+
+repl.start({
+    prompt: 'skype> ',
+    eval: function(cmd, context, filename, callback) {
+        var args = cmd.slice(1, -2).split(' ');
+        var method = args.shift();
+
+        if (method.length === 0) {
+            return callback();
+        }
+
+        if (mapping[method]) {
+            mapping[method](args, function(err, res) {
+                if (err) {
+                    callback(new Error(err.message));
+                } else {
+                    callback(null, res);
+                }
+            });
+        } else {
+            callback(new Error('Unknown function ' + method));
+        }
+    }
+});
