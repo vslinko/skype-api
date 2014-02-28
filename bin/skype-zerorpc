@@ -2,7 +2,7 @@
 #
 # Skype API
 #
-# Copyright (c) 2013 Vyacheslav Slinko
+# Copyright (c) 2013-2014 Vyacheslav Slinko
 # Licensed under the MIT License
 #
 
@@ -105,6 +105,16 @@ class SkypeRPC(object):
         self.skype.OnMessageStatus = self.on_message
         self.message_subscribers = set()
 
+    @zerorpc.stream
+    def stream_messages(self):
+        try:
+            queue = gevent.queue.Queue()
+            self.message_subscribers.add(queue)
+            for message in queue:
+                yield message
+        finally:
+            self.message_subscribers.remove(queue)
+
     def on_message(self, message, status):
         if status == Skype4Py.cmsReceived:
             for queue in self.message_subscribers:
@@ -114,23 +124,13 @@ class SkypeRPC(object):
                     'room': message.Chat.Name
                 })
 
-    @zerorpc.stream
-    def streaming_messages(self):
-        try:
-            queue = gevent.queue.Queue()
-            self.message_subscribers.add(queue)
-            for message in queue:
-                yield message
-        finally:
-            self.message_subscribers.remove(queue)
-
-    def chats(self):
+    def get_chats(self):
         return map(short_chat_mapper, self.skype.Chats)
 
-    def chat(self, chat_name):
+    def get_chat(self, chat_name):
         return chat_mapper(self.skype.Chat(chat_name))
 
-    def user(self, user_name):
+    def get_user(self, user_name):
         return user_mapper(self.skype.User(user_name))
 
     def send_message(self, chat_name, message_text):

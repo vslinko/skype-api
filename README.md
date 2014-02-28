@@ -14,6 +14,13 @@ skype.getUser('echo123', function (err, user) {
 });
 ```
 
+## Installation
+
+```bash
+npm install --save skype-api@^0.2
+pip install Skype4Py zerorpc gevent
+```
+
 ## API
 
 ### getChats(callback)
