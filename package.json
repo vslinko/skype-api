@@ -1,6 +1,6 @@
 {
     "name": "skype-api",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "description": "Skype API",
     "keywords": ["skype"],
     "homepage": "https://github.com/vslinko/skype-api",
@@ -23,6 +23,6 @@
         "url": "git://github.com/vslinko/skype-api.git"
     },
     "dependencies": {
-        "zerorpc": "~0.9"
+        "zerorpc": "^0.9"
     }
 }
